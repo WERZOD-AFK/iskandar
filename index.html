@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stars Shop — Admin Panel</title>
+<style>
+  :root {
+    --bg: #0f1115; --card: #171923; --text: #f2f3f5; --hint: #8a8f98;
+    --accent: #FFB300; --border: #2a2d36; --danger: #ef4444; --success: #10b981;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f5f6f8; --card: #ffffff; --text: #0f1115; --hint: #6b7280; --border: #e5e7eb; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  #login { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; gap: 12px; }
+  #login input { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); width: 260px; font-size: 14px; }
+  #login button, .btn { padding: 10px 16px; border-radius: 10px; border: none; background: var(--accent); color: #1a1200; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .btn.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn.danger { background: var(--danger); color: #fff; }
+  #app { display: none; max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  header h1 { font-size: 18px; margin: 0; }
+  nav { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; }
+  nav button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--hint); cursor: pointer; white-space: nowrap; font-size: 13px; }
+  nav button.active { background: var(--accent); color: #1a1200; border-color: var(--accent); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .stat .val { font-size: 22px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; color: var(--hint); margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--hint); font-weight: 600; }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { font-size: 12px; padding: 5px 10px; }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .panel h3 { margin: 0 0 12px; font-size: 14px; }
+  .form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .form-row input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; }
+  .badge { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.pending { background: #f59e0b22; color: #f59e0b; }
+  .badge.paid { background: #3b82f622; color: #3b82f6; }
+  .badge.completed { background: #10b98122; color: #10b981; }
+  .badge.cancelled { background: #ef444422; color: #ef4444; }
+  .badge.blocked { background: #ef444422; color: #ef4444; }
+  .badge.active { background: #10b98122; color: #10b981; }
+  .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 10px 18px; border-radius: 999px; font-size: 13px; z-index: 99; }
+  .toast.error { background: var(--danger); }
+  .empty { color: var(--hint); text-align: center; padding: 30px; font-size: 13px; }
+  .search { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); margin-bottom: 12px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>⭐ Stars Shop — Admin</h2>
+  <input id="passwordInput" type="password" placeholder="Admin parol" />
+  <input id="apiUrlInput" type="text" placeholder="Backend URL (https://...)" />
+  <button onclick="doLogin()">Kirish</button>
+</div>
+
+<div id="app">
+  <header>
+    <h1>⭐ Stars Shop — Admin</h1>
+    <button class="btn secondary" onclick="logout()">Chiqish</button>
+  </header>
+
+  <nav>
+    <button data-tab="dashboard" class="active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button data-tab="orders" onclick="switchTab('orders')">📦 Buyurtmalar</button>
+    <button data-tab="products" onclick="switchTab('products')">⭐ Paketlar</button>
+    <button data-tab="users" onclick="switchTab('users')">👥 Foydalanuvchilar</button>
+    <button data-tab="promo" onclick="switchTab('promo')">🎟 Promo kodlar</button>
+    <button data-tab="support" onclick="switchTab('support')">💬 Support</button>
+    <button data-tab="broadcast" onclick="switchTab('broadcast')">📢 Xabar yuborish</button>
+  </nav>
+
+  <section id="tab-dashboard"></section>
+  <section id="tab-orders" style="display:none"></section>
+  <section id="tab-products" style="display:none"></section>
+  <section id="tab-users" style="display:none"></section>
+  <section id="tab-promo" style="display:none"></section>
+  <section id="tab-support" style="display:none"></section>
+  <section id="tab-broadcast" style="display:none"></section>
+</div>
+
+<script>
+let API_URL = localStorage.getItem("admin_api_url") || "";
+let PASSWORD = localStorage.getItem("admin_password") || "";
+
+function showToast(msg, isError) {
+  const t = document.createElement("div");
+  t.className = "toast" + (isError ? " error" : "");
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(API_URL + path, {
+    ...options,
+    headers: { "Content-Type": "application/json", "X-Admin-Password": PASSWORD, ...options.headers },
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || "Xatolik: " + res.status);
+  }
+  return res.json();
+}
+
+function doLogin() {
+  const pw = document.getElementById("passwordInput").value.trim();
+  const url = document.getElementById("apiUrlInput").value.trim().replace(/\/$/, "");
+  if (!pw || !url) return showToast("Parol va Backend URL kiriting", true);
+  PASSWORD = pw; API_URL = url;
+  localStorage.setItem("admin_password", pw);
+  localStorage.setItem("admin_api_url", url);
+  boot();
+}
+
+function logout() {
+  localStorage.removeItem("admin_password");
+  localStorage.removeItem("admin_api_url");
+  location.reload();
+}
+
+async function boot() {
+  try {
+    await api("/api/admin/stats");
+  } catch (e) {
+    return showToast("Kira olmadik: " + e.message, true);
+  }
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  switchTab("dashboard");
+}
+
+function switchTab(tab) {
+  document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll("section").forEach((s) => (s.style.display = "none"));
+  document.getElementById("tab-" + tab).style.display = "block";
+  ({ dashboard: loadDashboard, orders: loadOrders, products: loadProducts, users: loadUsers, promo: loadPromo, support: loadSupport, broadcast: loadBroadcast }[tab])();
+}
+
+const fmt = (n) => Number(n).toLocaleString("ru-RU");
+const dfmt = (iso) => new Date(iso).toLocaleString("uz-UZ");
+
+// ---- Dashboard ----
+async function loadDashboard() {
+  const el = document.getElementById("tab-dashboard");
+  el.innerHTML = "<div class='empty'>Yuklanmoqda...</div>";
+  const s = await api("/api/admin/stats");
+  el.innerHTML = `
+    <div class="grid">
+      <div class="stat"><div class="val">${fmt(s.users_count)}</div><div class="lbl">👥 Foydalanuvchilar</div></div>
+      <div class="stat"><div class="val">${fmt(s.orders_count)}</div><div class="lbl">📦 Buyurtmalar</div></div>
+      <div class="stat"><div class="val">${fmt(s.stars_sold)}</div><div class="lbl">⭐ Sotilgan Stars</div></div>
+      <div class="stat"><div class="val">${fmt(s.revenue)} ⭐</div><div class="lbl">💰 Tushum</div></div>
+    </div>`;
+}
+
+// ---- Orders ----
+async function loadOrders() {
+  const el = document.getElementById("tab-orders");
+  el.innerHTML = "<div class='empty'>Yuklanmoqda...</div>";
+  const orders = await api("/api/admin/orders?limit=100");
+  if (!orders.length) return (el.innerHTML = "<div class='empty'>Buyurtmalar yo'q</div>");
+  el.innerHTML = `<table><thead><tr><th>ID</th><th>Stars</th><th>Narx</th><th>Status</th><th>Sana</th><th></th></tr></thead>
+    <tbody>${orders.map(o => `
+      <tr>
+        <td>#${o.id}</td>
+        <td>${fmt(o.stars_amount)}</td>
+        <td>${fmt(o.price_stars)} ⭐</td>
+        <td><span class="badge ${o.status}">${o.status}</span></td>
+        <td>${dfmt(o.created_at)}</td>
+        <td class="row-actions">${o.status === "paid" ? `<button class="btn" onclick="completeOrder(${o.id})">Yakunlash</button>` : ""}</td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+async function completeOrder(id) {
+  try {
+    await api(`/api/admin/orders/${id}/complete`, { method: "POST" });
+    showToast("✅ Buyurtma yakunlandi");
+    loadOrders();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ---- Products ----
+async function loadProducts() {
+  const el = document.getElementById("tab-products");
+  el.innerHTML = "<div class='empty'>Yuklanmoqda...</div>";
+  const products = await api("/api/products");
+  el.innerHTML = `
+    <div class="panel">
+      <h3>➕ Yangi paket</h3>
+      <div class="form-row">
+        <input id="p-name" placeholder="Nomi (masalan: 1000 Stars)" />
+        <input id="p-stars" type="number" placeholder="Stars miqdori" />
+        <input id="p-price" type="number" placeholder="Narxi (Stars)" />
+        <button class="btn" onclick="createProduct()">Qo'shish</button>
+      </div>
+    </div>
+    <table><thead><tr><th>Nomi</th><th>Stars</th><th>Narx</th><th>Holat</th><th></th></tr></thead>
+    <tbody>${products.map(p => `
+      <tr>
+        <td>${p.name}${p.is_popular ? " 🔥" : ""}</td>
+        <td>${fmt(p.stars_amount)}</td>
+        <td>${fmt(p.price_stars)} ⭐</td>
+        <td><span class="badge ${p.is_active ? "active" : "blocked"}">${p.is_active ? "faol" : "o'chirilgan"}</span></td>
+        <td class="row-actions">
+          <button class="btn secondary" onclick="togglePopular(${p.id}, ${!p.is_popular})">${p.is_popular ? "Popularni olib tashlash" : "Popular qilish"}</button>
+          ${p.is_active ? `<button class="btn danger" onclick="deleteProduct(${p.id})">O'chirish</button>` : ""}
+        </td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+async function createProduct() {
+  const name = document.getElementById("p-name").value.trim();
+  const stars_amount = Number(document.getElementById("p-stars").value);
+  const price_stars = Number(document.getElementById("p-price").value);
+  if (!name || !stars_amount || !price_stars) return showToast("Barcha maydonlarni to'ldiring", true);
+  try {
+    await api("/api/products", { method: "POST", body: JSON.stringify({ name, stars_amount, price_stars }) });
+    showToast("✅ Paket qo'shildi");
+    loadProducts();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function togglePopular(id, value) {
+  try {
+    await api(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify({ is_popular: value }) });
+    loadProducts();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deleteProduct(id) {
+  if (!confirm("Rostdan ham o'chirilsinmi?")) return;
+  try {
+    await api(`/api/products/${id}`, { method: "DELETE" });
+    showToast("O'chirildi");
+    loadProducts();
+  } catch (e) { showToast(e.message, true); }
+}
+
+// ---- Users ----
+async function loadUsers(search) {
+  const el = document.getElementById("tab-users");
+  el.innerHTML = `<input class="search" id="u-search" placeholder="Qidirish (username yoki ism)..." value="${search || ""}" oninput="debouncedSearch(this.value)" /><div id="u-table" class="empty">Yuklanmoqda...</div>`;
+  const q = search ? `?search=${encodeURIComponent(search)}` : "";
+  const users = await api("/api/admin/users" + q);
+  document.getElementById("u-table").outerHTML = !users.length ? "<div class='empty'>Foydalanuvchi topilmadi</div>" :
+    `<table><thead><tr><th>Ism</th><th>Username</th><th>Bonus</th><th>Holat</th><th></th></tr></thead>
+    <tbody>${users.map(u => `
+      <tr>
+        <td>${u.full_name}</td>
+        <td>@${u.username || "—"}</td>
+        <td>${fmt(u.bonus_balance)}</td>
+        <td><span class="badge ${u.is_blocked ? "blocked" : "active"}">${u.is_blocked ? "bloklangan" : "faol"}</span></td>
+        <td class="row-actions">
+          ${u.is_blocked
+            ? `<button class="btn" onclick="unblockUser(${u.tg_user_id})">Blokdan chiqarish</button>`
+            : `<button class="btn danger" onclick="blockUser(${u.tg_user_id})">Bloklash</button>`}
+        </td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+let searchTimer;
+function debouncedSearch(v) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadUsers(v), 350);
+}
+
+async function blockUser(id) {
+  try { await api(`/api/admin/users/${id}/block`, { method: "POST" }); showToast("🚫 Bloklandi"); loadUsers(); }
+  catch (e) { showToast(e.message, true); }
+}
+async function unblockUser(id) {
+  try { await api(`/api/admin/users/${id}/unblock`, { method: "POST" }); showToast("✅ Blokdan chiqarildi"); loadUsers(); }
+  catch (e) { showToast(e.message, true); }
+}
+
+// ---- Promo codes ----
+async function loadPromo() {
+  const el = document.getElementById("tab-promo");
+  el.innerHTML = "<div class='empty'>Yuklanmoqda...</div>";
+  const codes = await api("/api/admin/promo-codes");
+  el.innerHTML = `
+    <div class="panel">
+      <h3>➕ Yangi promo kod</h3>
+      <div class="form-row">
+        <input id="pr-code" placeholder="KOD (masalan PROMO10)" />
+        <input id="pr-discount" type="number" placeholder="Chegirma %" />
+        <input id="pr-uses" type="number" placeholder="Limit (necha marta)" />
+        <button class="btn" onclick="createPromo()">Qo'shish</button>
+      </div>
+    </div>
+    <table><thead><tr><th>Kod</th><th>Chegirma</th><th>Ishlatilgan</th><th>Holat</th><th></th></tr></thead>
+    <tbody>${codes.map(c => `
+      <tr>
+        <td>${c.code}</td>
+        <td>${c.discount_percent}%</td>
+        <td>${c.used_count} / ${c.max_uses}</td>
+        <td><span class="badge ${c.is_active ? "active" : "blocked"}">${c.is_active ? "faol" : "o'chirilgan"}</span></td>
+        <td class="row-actions">${c.is_active ? `<button class="btn danger" onclick="deactivatePromo(${c.id})">O'chirish</button>` : ""}</td>
+      </tr>`).join("")}</tbody></table>`;
+}
+
+async function createPromo() {
+  const code = document.getElementById("pr-code").value.trim().toUpperCase();
+  const discount_percent = Number(document.getElementById("pr-discount").value);
+  const max_uses = Number(document.getElementById("pr-uses").value);
+  if (!code || !discount_percent || !max_uses) return showToast("Barcha maydonlarni to'ldiring", true);
+  try {
+    await api(`/api/admin/promo-codes?code=${encodeURIComponent(code)}&discount_percent=${discount_percent}&max_uses=${max_uses}`, { method: "POST" });
+    showToast("✅ Promo kod qo'shildi");
+    loadPromo();
+  } catch (e) { showToast(e.message, true); }
+}
+
+async function deactivatePromo(id) {
+  try { await api(`/api/admin/promo-codes/${id}/deactivate`, { method: "POST" }); loadPromo(); }
+  catch (e) { showToast(e.message, true); }
+}
+
+// ---- Support ----
+async function loadSupport() {
+  const el = document.getElementById("tab-support");
+  el.innerHTML = "<div class='empty'>Yuklanmoqda...</div>";
+  const tickets = await api("/api/admin/support/tickets");
+  if (!tickets.length) return (el.innerHTML = "<div class='empty'>Savollar yo'q</div>");
+  el.innerHTML = tickets.map(t => `
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;color:var(--hint);font-size:12px;margin-bottom:6px;">
+        <span>Foydalanuvchi #${t.user_id}</span><span>${dfmt(t.created_at)}</span>
+      </div>
+      <div style="font-size:14px;">${t.message}</div>
+      <div style="margin-top:8px;"><span class="badge ${t.is_answered ? "active" : "pending"}">${t.is_answered ? "javob berilgan" : "kutilmoqda"}</span></div>
+    </div>`).join("");
+}
+
+// ---- Broadcast ----
+function loadBroadcast() {
+  const el = document.getElementById("tab-broadcast");
+  el.innerHTML = `
+    <div class="panel">
+      <h3>📢 Barcha foydalanuvchilarga xabar</h3>
+      <p style="color:var(--hint);font-size:12px;">
+        Bu yerdan yuborish hozircha qo'llab-quvvatlanmaydi — xabar yuborish uchun botda
+        <code>/broadcast</code> komandasidan foydalaning (faqat ADMIN_IDS ro'yxatidagi
+        adminlar uchun ishlaydi).
+      </p>
+    </div>`;
+}
+
+if (API_URL && PASSWORD) boot();
+</script>
+</body>
+</html>
